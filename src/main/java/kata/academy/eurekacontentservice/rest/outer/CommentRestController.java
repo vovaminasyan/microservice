@@ -1,6 +1,7 @@
 package kata.academy.eurekacontentservice.rest.outer;
 
-import kata.academy.eurekacontentservice.model.converter.CommentMapper;
+import kata.academy.eurekacontentservice.api.Data;
+//import kata.academy.eurekacontentservice.model.converter.CommentMapper;
 import kata.academy.eurekacontentservice.model.dto.CommentResponseDto;
 import kata.academy.eurekacontentservice.model.entity.Comment;
 import kata.academy.eurekacontentservice.model.entity.Post;
@@ -39,12 +40,12 @@ public class CommentRestController {
     private final CommentResponseDtoService commentResponseDtoService;
 
     @PostMapping("/{postId}/comments")
-    public ResponseEntity<CommentResponseDto> addComment(@RequestParam @NotBlank String text,
-                                                         @PathVariable @Positive Long postId,
-                                                         @RequestHeader @Positive Long userId) {
+    public ResponseEntity<Data<Long>> addComment(@RequestParam @NotBlank String text,
+                                                 @PathVariable @Positive Long postId,
+                                                 @RequestHeader @Positive Long userId) {
         Optional<Post> optionalPost = postService.findById(postId);
         ApiValidationUtil.requireTrue(optionalPost.isPresent(), String.format("Пост с postId %d нет в базе данных", postId));
-        return ResponseEntity.ok(CommentMapper.toDto(commentService.addComment(
+        Comment comment = commentService.addComment(
                 Comment
                         .builder()
                         .text(text)
@@ -52,19 +53,31 @@ public class CommentRestController {
                         .post(optionalPost.get())
                         .createdDate(LocalDateTime.now())
                         .build()
-        )));
+        );
+        return ResponseEntity.ok(Data.of(comment.getId()));
+//        return ResponseEntity.ok(CommentMapper.toDto(commentService.addComment(
+//                Comment
+//                        .builder()
+//                        .text(text)
+//                        .userId(userId)
+//                        .post(optionalPost.get())
+//                        .createdDate(LocalDateTime.now())
+//                        .build()
+//        )));
     }
 
     @PutMapping("/{postId}/comments/{commentId}")
-    public ResponseEntity<CommentResponseDto> updateComment(@RequestParam @NotBlank String text,
+    public ResponseEntity<Void> updateComment(@RequestParam @NotBlank String text,
                                                             @PathVariable @Positive Long postId,
                                                             @PathVariable @Positive Long commentId,
                                                             @RequestHeader @Positive Long userId) {
-        Optional<Comment> commentOptional = commentService.findByIdAndPostIdAndUserId(userId, postId, commentId);
+        Optional<Comment> commentOptional = commentService.findByIdAndPostIdAndUserId(commentId, postId, userId);
         ApiValidationUtil.requireTrue(commentOptional.isPresent(), String.format("Комментарий с commentId %d, postId %d и userId %d нет в базе данных", commentId, postId, userId));
         Comment comment = commentOptional.get();
         comment.setText(text);
-        return ResponseEntity.ok(CommentMapper.toDto(commentService.updateComment(comment)));
+        //return ResponseEntity.ok(CommentMapper.toDto(commentService.updateComment(comment)));
+        commentService.updateComment(comment);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{postId}/comments/{commentId}")
